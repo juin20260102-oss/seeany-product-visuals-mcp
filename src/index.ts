@@ -58,6 +58,10 @@ const apiKey = process.env.SEEANY_API_KEY?.trim()
 const configuredMode = process.env.SEEANY_MCP_MODE?.trim().toLowerCase()
 const runMode: RunMode = configuredMode === 'demo' || !apiKey ? 'demo' : 'live'
 const apiUserAgent = process.env.SEEANY_USER_AGENT || 'seeany-sun-mcp'
+const demoFallbackPng = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+)
 
 const jobs = new Map<string, GenerationJob>()
 const assets = new Map<string, UploadedAsset>()
@@ -405,7 +409,7 @@ async function downloadJob(job: GenerationJob, outputDir: string) {
     const target = path.join(resolvedDir, output.file_name)
     if (job.mode === 'demo') {
       const fixtureName = output.download_url.split('/').pop() || ''
-      try { await fs.copyFile(sourcePathForFixture(fixtureName), target) } catch { await fs.writeFile(target, Buffer.from(await (await fetch(output.download_url)).arrayBuffer())) }
+      try { await fs.copyFile(sourcePathForFixture(fixtureName), target) } catch { await fs.writeFile(target, demoFallbackPng) }
     } else {
       const response = await fetch(output.download_url)
       if (!response.ok) throw new Error(`failed to download ${output.download_url}: HTTP ${response.status}`)

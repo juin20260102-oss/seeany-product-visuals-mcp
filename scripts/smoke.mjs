@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -12,6 +12,16 @@ const transport = new StdioClientTransport({
 
 const client = new Client({ name: 'seeany-sun-mcp-smoke', version: '0.2.0' })
 await client.connect(transport)
+
+const workDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-sun-mcp-smoke-'))
+const fixturePath = path.join(workDir, 'fixture.png')
+await writeFile(
+  fixturePath,
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  ),
+)
 
 const listed = await client.listTools()
 const toolNames = listed.tools.map((tool) => tool.name)
@@ -33,7 +43,7 @@ for (const name of expected) {
 
 const uploaded = await client.callTool({
   name: 'seeany_upload_asset',
-  arguments: { file_path: '../public/images/products/shaver_product.png' },
+  arguments: { file_path: fixturePath },
 })
 const uploadedText = uploaded.content?.find((item) => item.type === 'text')?.text || ''
 if (!uploadedText.includes('"id": "asset_')) throw new Error(`Asset upload failed: ${uploadedText}`)
@@ -69,7 +79,7 @@ const completed = await client.callTool({
 const completedText = completed.content?.find((item) => item.type === 'text')?.text || ''
 if (!completedText.includes('succeeded')) throw new Error(`Generation did not succeed: ${completedText}`)
 
-const outputDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-sun-mcp-smoke-'))
+const outputDir = path.join(workDir, 'output')
 try {
   const downloaded = await client.callTool({
     name: 'seeany_download_assets',
@@ -79,7 +89,7 @@ try {
   if (!downloadedText.includes('file_path')) throw new Error(`Download failed: ${downloadedText}`)
   console.log(`Smoke test passed: ${toolNames.length} tools, upload/quote/job/download chain succeeded (${jobId})`)
 } finally {
-  await rm(outputDir, { recursive: true, force: true })
+  await rm(workDir, { recursive: true, force: true })
 }
 
 await transport.close()
