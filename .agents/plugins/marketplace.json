@@ -1,0 +1,21 @@
+{
+  "name": "seeany",
+  "interface": {
+    "displayName": "SeeAny Plugins"
+  },
+  "plugins": [
+    {
+      "name": "seeany-sun-mcp",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/juin20260102-oss/seeany-sun-mcp.git",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

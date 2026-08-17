@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "seeany-sun-mcp": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "seeany-sun-mcp"
+      ]
+    }
+  }
+}

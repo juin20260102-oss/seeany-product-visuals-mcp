@@ -40,6 +40,17 @@ npm run live-smoke
 codex mcp add seeany-sun-mcp -- npx --yes seeany-sun-mcp
 ```
 
+## 安装为 Codex 插件（MCP + Skill）
+
+仓库还提供 Codex 插件清单：安装后会同时得到 SeeAny MCP 工具和 `seeany-product-visuals` 商品视觉工作流 Skill。
+
+```bash
+codex plugin marketplace add juin20260102-oss/seeany-sun-mcp --sparse .agents/plugins
+codex plugin add seeany-sun-mcp@seeany
+```
+
+安装后请新开一个 Codex 对话；真实出图时仍需在本机环境设置 `SEEANY_API_KEY`。如只需 MCP 工具，使用上面的 `codex mcp add` 即可。
+
 如果使用真实 API，请在启动 MCP 的同一环境中设置 `SEEANY_API_KEY`。连接后建议先调用 `seeany_get_capabilities`，再按以下顺序调用：
 
 1. `seeany_upload_asset`（有参考图时）
