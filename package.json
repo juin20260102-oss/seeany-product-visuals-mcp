@@ -1,0 +1,39 @@
+{
+  "name": "seeany-sun-mcp",
+  "version": "0.2.0",
+  "private": false,
+  "description": "Local MCP server for SeeAny ecommerce image generation APIs",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example",
+    "LICENSE"
+  ],
+  "bin": {
+    "seeany-sun-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "live-smoke": "npm run build && node scripts/live-smoke.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "pack:check": "npm run build && npm pack --dry-run",
+    "prepublishOnly": "npm run build && npm run smoke"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  }
+}
