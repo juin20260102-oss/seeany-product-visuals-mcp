@@ -1,12 +1,13 @@
 {
   "name": "seeany-sun-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "description": "Local MCP server for SeeAny ecommerce image generation APIs",
   "type": "module",
   "license": "MIT",
   "files": [
     "dist",
+    "skills",
     "README.md",
     ".env.example",
     "LICENSE"

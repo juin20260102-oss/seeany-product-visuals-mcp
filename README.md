@@ -65,6 +65,10 @@ npm run inspect
 
 任务默认采用异步模式。主站 API 的图片/视频任务按账户配置计费；`seeany_quote_generation` 只返回估算值，不会预扣费用。
 
+## SeeAny Skill
+
+仓库内包含 `skills/seeany-product-visuals`，用于指导 Agent 按“上传参考图 → 提示词润色 → 询价 → 生成 → 轮询 → 下载”的完整流程调用 MCP。npm 包也会包含这个 Skill 目录。
+
 ## npm 包名
 
 当前包名定为 `seeany-sun-mcp`，适合先发布一个公开的无作用域包。正式发布前需要在 npm 上确认名称可用；如果 SeeAny 已建立 npm scope，也可以迁移为 `@seeany/sun-mcp`。
