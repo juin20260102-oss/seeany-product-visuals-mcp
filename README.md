@@ -95,3 +95,21 @@ npx --yes seeany-sun-mcp
 ```bash
 npm run pack:check
 ```
+
+## 自动测试与发布
+
+GitHub Actions 会在 `main` 分支 Push 和 Pull Request 时，使用 Node.js 20、22、24 执行插件校验、MCP Smoke Test 和 npm 打包检查。
+
+发布新版本时，先同步更新 `package.json`、`package-lock.json` 和 `.codex-plugin/plugin.json` 的版本，再创建相同版本的 Git Tag：
+
+```bash
+git tag v0.5.0
+git push origin v0.5.0
+```
+
+`release.yml` 会验证 Tag 与包版本一致，然后通过 npm Trusted Publishing 发布并创建 GitHub Release。首次使用前，需要在 npm 包设置中添加 GitHub Actions Trusted Publisher：
+
+- GitHub 用户：`juin20260102-oss`
+- 仓库：`seeany-sun-mcp`
+- Workflow：`release.yml`
+- Allowed action：`npm publish`

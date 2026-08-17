@@ -24,8 +24,10 @@
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
     "live-smoke": "npm run build && node scripts/live-smoke.mjs",
     "smoke": "npm run build && node scripts/smoke.mjs",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
+    "verify": "npm run validate:plugin && npm run smoke && npm run pack:check",
     "pack:check": "npm run build && npm pack --dry-run",
-    "prepublishOnly": "npm run build && npm run smoke"
+    "prepublishOnly": "npm run validate:plugin && npm run build && npm run smoke"
   },
   "publishConfig": {
     "access": "public"
