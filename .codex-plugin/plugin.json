@@ -1,7 +1,7 @@
 {
   "name": "seeany-sun-mcp",
-  "version": "0.4.1",
-  "description": "SeeAny ecommerce image-generation MCP and product-visuals skill for Codex.",
+  "version": "0.4.2",
+  "description": "Generate ecommerce product images from Codex with SeeAny, from reference upload and prompt refinement through task tracking and local download.",
   "author": {
     "name": "SeeAny",
     "url": "https://www.seeany.com"
@@ -19,14 +19,18 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "SeeAny Sun MCP",
-    "shortDescription": "Generate ecommerce product visuals with SeeAny.",
-    "longDescription": "Combines the SeeAny image-generation MCP with a guided product-visuals workflow for ecommerce assets.",
+    "shortDescription": "Create and download ecommerce product images with SeeAny.",
+    "longDescription": "Upload product references, refine prompts, estimate cost, generate white-background, scene, or detail images, track asynchronous jobs, and download completed assets.",
     "developerName": "SeeAny",
     "category": "Productivity",
     "capabilities": [
       "MCP tools",
-      "Image generation",
-      "Skills"
+      "Reference image upload",
+      "Prompt refinement",
+      "Cost estimation",
+      "Product image generation",
+      "Task tracking",
+      "Local asset download"
     ],
     "websiteURL": "https://www.seeany.com",
     "defaultPrompt": "Use $seeany-product-visuals to create an ecommerce product image."

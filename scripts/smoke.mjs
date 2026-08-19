@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -10,8 +10,21 @@ const transport = new StdioClientTransport({
   env: { ...process.env, SEEANY_MCP_MODE: 'demo' },
 })
 
-const client = new Client({ name: 'seeany-sun-mcp-smoke', version: '0.2.0' })
+const packageJson = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+)
+const client = new Client({
+  name: 'seeany-sun-mcp-smoke',
+  version: packageJson.version,
+})
 await client.connect(transport)
+
+const serverVersion = client.getServerVersion()
+if (serverVersion?.version !== packageJson.version) {
+  throw new Error(
+    `MCP server version ${serverVersion?.version || 'unknown'} does not match package version ${packageJson.version}`,
+  )
+}
 
 const workDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-sun-mcp-smoke-'))
 const fixturePath = path.join(workDir, 'fixture.png')
@@ -87,7 +100,7 @@ try {
   })
   const downloadedText = downloaded.content?.find((item) => item.type === 'text')?.text || ''
   if (!downloadedText.includes('file_path')) throw new Error(`Download failed: ${downloadedText}`)
-  console.log(`Smoke test passed: ${toolNames.length} tools, upload/quote/job/download chain succeeded (${jobId})`)
+  console.log(`Smoke test passed: MCP ${serverVersion.version}, ${toolNames.length} tools, upload/quote/job/download chain succeeded (${jobId})`)
 } finally {
   await rm(workDir, { recursive: true, force: true })
 }

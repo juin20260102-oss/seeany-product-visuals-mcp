@@ -52,6 +52,10 @@ interface UploadedAsset {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '../../')
+const packageMetadata = JSON.parse(
+  await fs.readFile(path.resolve(__dirname, '../package.json'), 'utf8'),
+) as { version?: string }
+const serverVersion = packageMetadata.version || '0.0.0'
 const demoBaseUrl = (process.env.SEEANY_DEMO_BASE_URL || 'https://seeany-nuxt.pages.dev').replace(/\/$/, '')
 const apiBaseUrl = (process.env.SEEANY_API_BASE_URL || 'https://api.seeany.com').replace(/\/$/, '')
 const apiKey = process.env.SEEANY_API_KEY?.trim()
@@ -490,7 +494,7 @@ async function handleTool(name: string, args: Record<string, any>) {
 }
 
 const server = new Server(
-  { name: 'seeany-sun-mcp', version: '0.2.0' },
+  { name: 'seeany-sun-mcp', version: serverVersion },
   { capabilities: { tools: {} }, instructions: 'Use seeany_get_capabilities first. Upload local images before generation when references are needed. In live mode, generation and prompt refinement may incur account charges.' },
 )
 
