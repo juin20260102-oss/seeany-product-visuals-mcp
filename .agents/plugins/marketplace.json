@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "seeany-sun-mcp",
+      "name": "seeany-product-visuals-mcp",
       "source": {
         "source": "url",
-        "url": "https://github.com/juin20260102-oss/seeany-sun-mcp.git",
+        "url": "https://github.com/juin20260102-oss/seeany-product-visuals-mcp.git",
         "ref": "main"
       },
       "policy": {

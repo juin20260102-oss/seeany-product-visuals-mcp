@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "seeany-sun-mcp": {
+    "seeany-product-visuals-mcp": {
       "command": "npx",
       "args": [
         "--yes",
-        "seeany-sun-mcp"
+        "seeany-product-visuals-mcp"
       ]
     }
   }

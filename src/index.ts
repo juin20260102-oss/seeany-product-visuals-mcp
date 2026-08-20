@@ -61,7 +61,7 @@ const apiBaseUrl = (process.env.SEEANY_API_BASE_URL || 'https://api.seeany.com')
 const apiKey = process.env.SEEANY_API_KEY?.trim()
 const configuredMode = process.env.SEEANY_MCP_MODE?.trim().toLowerCase()
 const runMode: RunMode = configuredMode === 'demo' || !apiKey ? 'demo' : 'live'
-const apiUserAgent = process.env.SEEANY_USER_AGENT || 'seeany-sun-mcp'
+const apiUserAgent = process.env.SEEANY_USER_AGENT || 'seeany-product-visuals-mcp'
 const demoFallbackPng = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
   'base64',
@@ -494,7 +494,7 @@ async function handleTool(name: string, args: Record<string, any>) {
 }
 
 const server = new Server(
-  { name: 'seeany-sun-mcp', version: serverVersion },
+  { name: 'seeany-product-visuals-mcp', version: serverVersion },
   { capabilities: { tools: {} }, instructions: 'Use seeany_get_capabilities first. Upload local images before generation when references are needed. In live mode, generation and prompt refinement may incur account charges.' },
 )
 

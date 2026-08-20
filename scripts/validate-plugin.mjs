@@ -19,10 +19,12 @@ const packageJson = await readJson("package.json");
 const pluginJson = await readJson(".codex-plugin/plugin.json");
 const mcpJson = await readJson(".mcp.json");
 const marketplaceJson = await readJson(".agents/plugins/marketplace.json");
-const skill = await readFile(
-  resolve(root, "skills/seeany-product-visuals/SKILL.md"),
-  "utf8",
-);
+const skill = (
+  await readFile(
+    resolve(root, "skills/seeany-product-visuals/SKILL.md"),
+    "utf8",
+  )
+).replace(/\r\n/g, "\n");
 
 assert(pluginJson.name === packageJson.name, "Plugin and npm package names must match.");
 assert(pluginJson.version === packageJson.version, "Plugin and npm package versions must match.");

@@ -1,13 +1,13 @@
 {
-  "name": "seeany-sun-mcp",
-  "version": "0.4.2",
-  "description": "Generate ecommerce product images from Codex with SeeAny, from reference upload and prompt refinement through task tracking and local download.",
+  "name": "seeany-product-visuals-mcp",
+  "version": "0.5.0",
+  "description": "Give AI agents a complete SeeAny workflow for creating ecommerce product visuals.",
   "author": {
     "name": "SeeAny",
     "url": "https://www.seeany.com"
   },
   "homepage": "https://www.seeany.com/developer/docs",
-  "repository": "https://github.com/juin20260102-oss/seeany-sun-mcp",
+  "repository": "https://github.com/juin20260102-oss/seeany-product-visuals-mcp",
   "license": "MIT",
   "keywords": [
     "seeany",
@@ -18,9 +18,9 @@
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "SeeAny Sun MCP",
-    "shortDescription": "Create and download ecommerce product images with SeeAny.",
-    "longDescription": "Upload product references, refine prompts, estimate cost, generate white-background, scene, or detail images, track asynchronous jobs, and download completed assets.",
+    "displayName": "SeeAny Product Visuals",
+    "shortDescription": "Create ecommerce product visuals from AI agents with SeeAny.",
+    "longDescription": "Connect Codex, Claude Code, Cursor, WorkBuddy, and other MCP-compatible agents to SeeAny for reference upload, prompt refinement, cost estimation, product image generation, asynchronous task tracking, and local asset download.",
     "developerName": "SeeAny",
     "category": "Productivity",
     "capabilities": [

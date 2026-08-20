@@ -14,7 +14,7 @@ const packageJson = JSON.parse(
   await readFile(new URL('../package.json', import.meta.url), 'utf8'),
 )
 const client = new Client({
-  name: 'seeany-sun-mcp-smoke',
+  name: 'seeany-product-visuals-mcp-smoke',
   version: packageJson.version,
 })
 await client.connect(transport)
@@ -26,7 +26,7 @@ if (serverVersion?.version !== packageJson.version) {
   )
 }
 
-const workDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-sun-mcp-smoke-'))
+const workDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-product-visuals-mcp-smoke-'))
 const fixturePath = path.join(workDir, 'fixture.png')
 await writeFile(
   fixturePath,

@@ -1,8 +1,10 @@
-# SeeAny Sun MCP
+# SeeAny Product Visuals
 
-让 Codex、Claude Code、Cursor 等支持 MCP 的编程 Agent，直接调用 SeeAny 的电商商品图生成能力。
+让 Codex、Claude Code、Cursor、WorkBuddy 等支持 MCP 的 AI Agent，直接调用 SeeAny 的电商商品视觉生成能力。
 
-Agent 可以通过这个 MCP 完成一条可追踪的商品图工作流：识别当前模型能力、上传商品参考图、润色提示词、预估费用、创建出图任务、等待任务完成，并把结果下载到本地。使用者不需要在对话中复制 API 请求、轮询任务状态或手动下载图片。
+> 给 AI Agent 装上商品视觉创作能力。
+
+SeeAny Product Visuals 是面向 AI Agent 的电商商品视觉生成 MCP。Agent 可以通过它完成一条可追踪的商品图工作流：识别当前模型能力、上传商品参考图、润色提示词、预估费用、创建出图任务、等待任务完成，并把结果下载到本地。使用者不需要在对话中复制 API 请求、轮询任务状态或手动下载图片。
 
 ## 这个 MCP 能做什么
 
@@ -94,13 +96,13 @@ Live 模式支持真实上传、提示词润色、商品图生成、任务轮询
 直接启动：
 
 ```bash
-npx --yes seeany-sun-mcp@latest
+npx --yes seeany-product-visuals-mcp@latest
 ```
 
 连接 Codex：
 
 ```bash
-codex mcp add seeany-sun-mcp -- npx --yes seeany-sun-mcp@latest
+codex mcp add seeany-product-visuals -- npx --yes seeany-product-visuals-mcp@latest
 ```
 
 其他 MCP Client 可使用等价配置：
@@ -108,9 +110,9 @@ codex mcp add seeany-sun-mcp -- npx --yes seeany-sun-mcp@latest
 ```json
 {
   "mcpServers": {
-    "seeany-sun-mcp": {
+    "seeany-product-visuals": {
       "command": "npx",
-      "args": ["--yes", "seeany-sun-mcp@latest"],
+      "args": ["--yes", "seeany-product-visuals-mcp@latest"],
       "env": {
         "SEEANY_API_KEY": "由本机安全环境提供，不要提交到仓库"
       }
@@ -126,8 +128,8 @@ codex mcp add seeany-sun-mcp -- npx --yes seeany-sun-mcp@latest
 插件安装后会同时提供 SeeAny MCP 工具和 `seeany-product-visuals` 商品视觉工作流 Skill。Skill 会指导 Agent 遵循“上传参考图 → 润色 → 询价 → 生成 → 等待 → 下载”的安全流程。
 
 ```bash
-codex plugin marketplace add juin20260102-oss/seeany-sun-mcp --sparse .agents/plugins
-codex plugin add seeany-sun-mcp@seeany
+codex plugin marketplace add juin20260102-oss/seeany-product-visuals-mcp --sparse .agents/plugins
+codex plugin add seeany-product-visuals-mcp@seeany
 ```
 
 安装或升级后请新开一个 Codex 对话，使最新工具和 Skill 生效。真实出图仍需在本机设置 `SEEANY_API_KEY`。
@@ -191,6 +193,6 @@ GitHub Actions 会在 `main` 分支 Push 和 Pull Request 时，使用 Node.js 2
 ## 链接
 
 - SeeAny 开发者文档：https://www.seeany.com/developer
-- npm：https://www.npmjs.com/package/seeany-sun-mcp
-- GitHub：https://github.com/juin20260102-oss/seeany-sun-mcp
+- npm：https://www.npmjs.com/package/seeany-product-visuals-mcp
+- GitHub：https://github.com/juin20260102-oss/seeany-product-visuals-mcp
 - License：MIT

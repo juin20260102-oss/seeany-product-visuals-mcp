@@ -12,7 +12,7 @@ const transport = new StdioClientTransport({
   env: { ...process.env, SEEANY_MCP_MODE: 'live' },
 })
 
-const client = new Client({ name: 'seeany-sun-mcp-live-smoke', version: '0.2.0' })
+const client = new Client({ name: 'seeany-product-visuals-mcp-live-smoke', version: '0.2.0' })
 await client.connect(transport)
 
 function textOf(result) {
@@ -51,7 +51,7 @@ if (!completedText.includes('"status": "succeeded"') && !completedText.includes(
   throw new Error(`Live generation did not succeed: ${completedText}`)
 }
 
-const outputDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-sun-mcp-live-'))
+const outputDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-product-visuals-mcp-live-'))
 try {
   const downloaded = await client.callTool({
     name: 'seeany_download_assets',

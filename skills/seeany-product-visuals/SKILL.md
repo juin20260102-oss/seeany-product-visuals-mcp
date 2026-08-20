@@ -63,4 +63,4 @@ Use the SeeAny MCP to turn a product-image request into a traceable generation j
 - Never start a live generation without the user's authorization for the estimated cost.
 - Do not retry a submitted job by creating another job unless the original is definitively failed or the user explicitly requests a new variation.
 - Do not claim that unsupported operations such as video, try-on, background replacement, or image editing are available through this skill until corresponding MCP tools are installed.
-- If the MCP is unavailable, explain how to start `seeany-sun-mcp` and stop rather than fabricating a result.
+- If the MCP is unavailable, explain how to start `seeany-product-visuals-mcp` and stop rather than fabricating a result.
