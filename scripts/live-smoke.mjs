@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -12,56 +12,57 @@ const transport = new StdioClientTransport({
   env: { ...process.env, SEEANY_MCP_MODE: 'live' },
 })
 
-const client = new Client({ name: 'seeany-product-visuals-mcp-live-smoke', version: '0.2.0' })
+const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+const client = new Client({ name: 'seeany-product-visuals-mcp-live-smoke', version: packageJson.version })
 await client.connect(transport)
 
-function textOf(result) {
-  return result.content?.find((item) => item.type === 'text')?.text || ''
-}
-
-const uploaded = await client.callTool({
-  name: 'seeany_upload_asset',
-  arguments: { file_path: '../public/images/products/shaver_product.png' },
-})
-const uploadedText = textOf(uploaded)
-const assetId = uploadedText.match(/"id":\s*"(asset_[a-z0-9]+)"/i)?.[1]
-if (!assetId) throw new Error(`Live upload failed: ${uploadedText}`)
-
-const created = await client.callTool({
-  name: 'seeany_generate_product_image',
-  arguments: {
-    prompt: 'Create one clean ecommerce hero image of the product. Preserve the product shape and details, use a pure white studio background, centered composition, soft natural shadow, commercial product photography.',
-    reference_asset_ids: [assetId],
-    model: 'seeany-fast',
-    aspect_ratio: '1:1',
-    resolution: '1k',
-    count: 1,
-  },
-})
-const createdText = textOf(created)
-const jobId = createdText.match(/"job_id":\s*"([^"]+)"/)?.[1]
-if (!jobId) throw new Error(`Live generation submission failed: ${createdText}`)
-
-const completed = await client.callTool({
-  name: 'seeany_wait_generation',
-  arguments: { job_id: jobId, timeout_seconds: 120 },
-})
-const completedText = textOf(completed)
-if (!completedText.includes('"status": "succeeded"') && !completedText.includes('"status":"succeeded"')) {
-  throw new Error(`Live generation did not succeed: ${completedText}`)
+function parseResult(result) {
+  const text = result.content?.find((item) => item.type === 'text')?.text || ''
+  const jsonStart = text.indexOf('\n')
+  if (jsonStart < 0) throw new Error(`Tool result did not include JSON: ${text}`)
+  return JSON.parse(text.slice(jsonStart + 1))
 }
 
 const outputDir = await mkdtemp(path.join(os.tmpdir(), 'seeany-product-visuals-mcp-live-'))
 try {
-  const downloaded = await client.callTool({
-    name: 'seeany_download_assets',
-    arguments: { job_id: jobId, output_dir: outputDir },
+  const planned = await client.callTool({
+    name: 'seeany_plan_product_visual',
+    arguments: {
+      request: 'Create one clean ecommerce hero image of the product. Preserve the product shape and details, use a pure white studio background, centered composition, soft natural shadow, commercial product photography.',
+      reference_file_paths: ['../public/images/products/shaver_product.png'],
+      use_case: 'white_background',
+      model: 'seeany-fast',
+      aspect_ratio: '1:1',
+      resolution: '1k',
+      count: 1,
+      output_dir: outputDir,
+    },
   })
-  const downloadedText = textOf(downloaded)
-  if (!downloadedText.includes('file_path')) throw new Error(`Live download failed: ${downloadedText}`)
-  console.log(JSON.stringify({ ok: true, job_id: jobId, output_dir: outputDir, result: downloadedText }, null, 2))
-} finally {
-  await rm(outputDir, { recursive: true, force: true })
+  const plan = parseResult(planned)
+  if (!plan.id || typeof plan.estimated_price_cny !== 'number' || plan.job_id) {
+    throw new Error(`Live planning failed or created a task too early: ${JSON.stringify(plan)}`)
+  }
+
+  const executed = await client.callTool({
+    name: 'seeany_create_product_visual',
+    arguments: { plan_id: plan.id, confirm_cost: true, timeout_seconds: 120 },
+  }, undefined, { timeout: 180_000 })
+  const execution = parseResult(executed)
+  if (execution.status !== 'succeeded' || !execution.job_id || !execution.downloaded_files?.length) {
+    throw new Error(`Live high-level execution failed: ${JSON.stringify(execution)}`)
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    plan_id: plan.id,
+    job_id: execution.job_id,
+    estimated_price_cny: plan.estimated_price_cny,
+    output_dir: outputDir,
+    files: execution.downloaded_files,
+  }, null, 2))
+} catch (error) {
+  console.error(`Live smoke output directory preserved for recovery: ${outputDir}`)
+  throw error
 }
 
 await transport.close()

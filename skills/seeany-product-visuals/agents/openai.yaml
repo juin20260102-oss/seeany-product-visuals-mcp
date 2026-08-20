@@ -1,4 +1,4 @@
 interface:
   display_name: "SeeAny Product Visuals"
-  short_description: "Generate ecommerce product visuals via SeeAny MCP"
-  default_prompt: "Use $seeany-product-visuals to create a production-ready ecommerce product image."
+  short_description: "Plan, quote, and create ecommerce visuals with SeeAny"
+  default_prompt: "Use $seeany-product-visuals to plan and quote a product image, then wait for my confirmation before generating it."

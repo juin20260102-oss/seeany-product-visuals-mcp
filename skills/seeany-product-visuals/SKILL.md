@@ -1,66 +1,68 @@
 ---
 name: seeany-product-visuals
-description: Create ecommerce product images with the SeeAny MCP, including clean hero images, studio scenes, product details, and prompt refinement. Use when a user asks to generate, visualize, stage, or improve product artwork and a SeeAny MCP server is available.
+description: Plan and create ecommerce product visuals with the SeeAny MCP, including white-background hero images, scenes, details, references, cost confirmation, and local downloads. Use for product-image requests when the SeeAny MCP is available.
 ---
 
 # SeeAny Product Visuals
 
-Use the SeeAny MCP to turn a product-image request into a traceable generation job and downloadable files. Prefer the smallest complete workflow and preserve the user's product identity when reference images are provided.
+Turn a product-image request into a quoted, traceable generation plan and downloaded files. Prefer the two-stage tools for ordinary requests; use the lower-level tools only when the user needs control over an individual step.
 
-## Workflow
+## Standard workflow
 
-1. Clarify the output before calling a paid tool.
-   - Identify the product, intended placement (hero, scene, detail), visual direction, aspect ratio, resolution, model, and image count.
-   - Use `1:1`, `3:4`, or `9:16` only when the user has not specified a ratio and the use case makes the choice obvious.
-   - Default to one image and `1k`; use `seeany-fast` for a low-cost first test and `seeany-quality` when quality is the priority.
+1. Identify the product, use case, visual direction, aspect ratio, resolution, model, count, reference files, and output directory from the request.
+   - Default to one image at `1k`.
+   - Use `seeany-fast` for a low-cost test and `seeany-quality` when quality is the priority.
+   - Choose `1:1` for marketplace hero images, `3:4` or `4:5` for product/editorial layouts, and `9:16` for vertical social content only when the user has not specified a ratio and the intended placement makes the choice clear.
 
-2. Upload references when needed.
-   - Call `seeany_upload_asset` for each local product or model image.
-   - Keep the returned `asset_id`; pass asset ids, not local paths, to later tools.
-   - Do not expose API keys or embed them in URLs, prompts, files, or logs.
+2. Call `seeany_plan_product_visual`.
+   - Pass local reference paths directly in `reference_file_paths`; the planning tool validates them but does not upload them or create a generation task.
+   - Present the returned prompt, model, ratio, resolution, count, output directory, and estimated price or Demo credits.
+   - Make it explicit that planning created no paid generation task.
 
-3. Prepare the prompt.
-   - Call `seeany_refine_prompt` when the request is vague, lacks ecommerce constraints, or needs a more premium/creative direction.
-   - Write prompts that state subject identity, composition, background, lighting, material fidelity, negative constraints, and intended platform.
-   - Do not promise exact text or logos unless the model and reference are likely to preserve them.
+3. Obtain confirmation before Live execution.
+   - Ask for confirmation when the user has not already authorized the shown parameters and estimated cost.
+   - Demo mode has no real charge; tell the user that its output is simulated and cannot be used to judge model quality.
 
-4. Quote and confirm live work.
-   - Call `seeany_quote_generation` with the selected model, count, use case, and resolution.
-   - In live mode, treat the returned CNY amount as an estimate. Confirm the estimate before starting a paid task unless the user already authorized the generation and parameters.
-   - Demo mode has no real charge; tell the user when a result is simulated.
+4. Call `seeany_create_product_visual` with the returned `plan_id`.
+   - Set `confirm_cost=true` only after the user has authorized the Live estimate. The field may be `false` in Demo mode.
+   - The tool uploads references, creates or resumes the generation job, waits for completion, and downloads successful results.
+   - Return the `plan_id`, `job_id`, final status, and concrete local file paths.
 
-5. Create the task.
-   - Call `seeany_generate_product_image` with the prompt, `reference_asset_ids`, model, aspect ratio, resolution, and count.
-   - Record the returned `job_id` and tell the user whether the task is demo or live.
+5. Resume instead of duplicating.
+   - If execution times out, call `seeany_create_product_visual` again with the same `plan_id`.
+   - Never create a new plan merely because polling timed out. Reusing the plan resumes its stored `job_id` and avoids another paid task.
+   - A server restart clears in-memory plan mappings. If the MCP reports an unknown plan after restart, explain the limitation before considering a new paid task.
 
-6. Wait for completion.
-   - Call `seeany_wait_generation` with the job id and a timeout up to 120 seconds.
-   - If it times out, call `seeany_get_generation` and report the current status rather than creating a duplicate task.
-   - Treat `succeeded` as complete, `partial_failed` as mixed output, and `failed` as an error requiring explanation.
+## Prompt refinement and advanced control
 
-7. Download and report.
-   - After success, call `seeany_download_assets` with a user-provided output directory.
-   - Return the job id, final status, generated image URLs when useful, and concrete local file paths.
-   - For partial failures, report successful files and each failed item separately.
+The planning tool adds deterministic ecommerce constraints without calling the paid AI refinement endpoint. Use `seeany_refine_prompt` only when the user asks for AI refinement or the creative direction genuinely needs it; disclose that Live refinement may incur a small charge.
 
-## Tool mapping
+Use the lower-level tools when the user explicitly needs to upload assets separately, compare quotes, submit without the high-level workflow, inspect a known job, or control the download step:
 
 | Goal | Tool |
 | --- | --- |
-| Discover available models and ratios | `seeany_get_capabilities` |
-| Check demo/live mode | `seeany_get_account` |
-| Upload a local reference | `seeany_upload_asset` |
-| Improve a rough prompt | `seeany_refine_prompt` |
-| Estimate cost | `seeany_quote_generation` |
-| Start generation | `seeany_generate_product_image` |
-| Read status | `seeany_get_generation` |
-| Wait for status | `seeany_wait_generation` |
-| Save result locally | `seeany_download_assets` |
+| Plan and quote an ordinary request | `seeany_plan_product_visual` |
+| Confirm, execute, wait, and download | `seeany_create_product_visual` |
+| Discover models and ratios | `seeany_get_capabilities` |
+| Check Demo/Live mode | `seeany_get_account` |
+| Upload one local reference | `seeany_upload_asset` |
+| Use AI prompt refinement | `seeany_refine_prompt` |
+| Estimate a low-level task | `seeany_quote_generation` |
+| Create a low-level task | `seeany_generate_product_image` |
+| Read or wait for job status | `seeany_get_generation` / `seeany_wait_generation` |
+| Download a completed job | `seeany_download_assets` |
+
+## Product fidelity
+
+- Preserve product identity, proportions, materials, distinctive features, and visible branding when references are supplied.
+- State the intended placement, composition, background, lighting, material fidelity, and important negative constraints.
+- Do not promise exact text or logo reproduction unless the selected model and references make it realistic.
+- Report partial failures item by item rather than hiding successful outputs.
 
 ## Guardrails
 
-- Never request, print, store, or transmit `SEEANY_API_KEY` or any npm/GitHub token.
-- Never start a live generation without the user's authorization for the estimated cost.
-- Do not retry a submitted job by creating another job unless the original is definitively failed or the user explicitly requests a new variation.
-- Do not claim that unsupported operations such as video, try-on, background replacement, or image editing are available through this skill until corresponding MCP tools are installed.
-- If the MCP is unavailable, explain how to start `seeany-product-visuals-mcp` and stop rather than fabricating a result.
+- Never request, print, store, or transmit `SEEANY_API_KEY` or npm/GitHub tokens.
+- Never start a Live generation without authorization for the shown estimate.
+- Never replace an existing `plan_id` or `job_id` after a timeout just to retry faster.
+- Do not claim video, virtual try-on, background replacement, local inpainting, or precise image-text editing until corresponding MCP tools exist.
+- If the MCP is unavailable, explain how to start `npx --yes seeany-product-visuals-mcp@latest` and stop rather than fabricating a result.

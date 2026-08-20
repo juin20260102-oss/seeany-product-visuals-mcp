@@ -1,12 +1,13 @@
 {
   "name": "seeany-product-visuals-mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": false,
-  "description": "Create ecommerce product visuals from AI agents with SeeAny: upload references, refine prompts, estimate costs, generate images, track jobs, and download results.",
+  "description": "Plan and create ecommerce product visuals from WorkBuddy, Codex, Claude Code, Cursor, and other AI agents with SeeAny.",
   "type": "module",
   "license": "MIT",
   "files": [
     "dist",
+    "docs",
     "skills",
     ".codex-plugin",
     ".mcp.json",

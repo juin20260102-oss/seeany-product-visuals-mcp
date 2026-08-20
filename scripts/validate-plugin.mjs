@@ -19,6 +19,7 @@ const packageJson = await readJson("package.json");
 const pluginJson = await readJson(".codex-plugin/plugin.json");
 const mcpJson = await readJson(".mcp.json");
 const marketplaceJson = await readJson(".agents/plugins/marketplace.json");
+const workbuddyGuide = await readFile(resolve(root, "docs/workbuddy.md"), "utf8");
 const skill = (
   await readFile(
     resolve(root, "skills/seeany-product-visuals/SKILL.md"),
@@ -30,6 +31,7 @@ assert(pluginJson.name === packageJson.name, "Plugin and npm package names must 
 assert(pluginJson.version === packageJson.version, "Plugin and npm package versions must match.");
 assert(pluginJson.skills === "./skills/", "Plugin must expose the bundled skills directory.");
 assert(pluginJson.mcpServers === "./.mcp.json", "Plugin must reference .mcp.json.");
+assert(Array.isArray(pluginJson.interface?.defaultPrompt), "Plugin defaultPrompt must be an array.");
 
 const server = mcpJson.mcpServers?.[packageJson.name];
 assert(server?.command === "npx", "MCP server must launch through npx.");
@@ -59,6 +61,14 @@ assert(
 assert(
   /\ndescription:\s*\S+/.test(skill),
   "Skill frontmatter must include a description.",
+);
+assert(
+  skill.includes("seeany_plan_product_visual") && skill.includes("seeany_create_product_visual"),
+  "Skill must document the two-stage product visual workflow.",
+);
+assert(
+  workbuddyGuide.includes("seeany-product-visuals-mcp@latest"),
+  "WorkBuddy guide must include the published npm package.",
 );
 
 console.log(

@@ -1,7 +1,7 @@
 {
   "name": "seeany-product-visuals-mcp",
-  "version": "0.5.0",
-  "description": "Give AI agents a complete SeeAny workflow for creating ecommerce product visuals.",
+  "version": "0.6.0",
+  "description": "Plan, quote, create, track, and download ecommerce product visuals with SeeAny.",
   "author": {
     "name": "SeeAny",
     "url": "https://www.seeany.com"
@@ -19,12 +19,15 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "SeeAny Product Visuals",
-    "shortDescription": "Create ecommerce product visuals from AI agents with SeeAny.",
-    "longDescription": "Connect Codex, Claude Code, Cursor, WorkBuddy, and other MCP-compatible agents to SeeAny for reference upload, prompt refinement, cost estimation, product image generation, asynchronous task tracking, and local asset download.",
+    "shortDescription": "Plan and create ecommerce product visuals safely with SeeAny.",
+    "longDescription": "Connect AI agents to SeeAny through a two-stage workflow: plan and quote without creating a paid task, then confirm, generate, track, and download product visuals. Advanced tools remain available for reference uploads, prompt refinement, task inspection, and custom workflows.",
     "developerName": "SeeAny",
     "category": "Productivity",
     "capabilities": [
       "MCP tools",
+      "Two-stage plan and execution",
+      "Explicit cost confirmation",
+      "Idempotent task resume",
       "Reference image upload",
       "Prompt refinement",
       "Cost estimation",
@@ -33,6 +36,8 @@
       "Local asset download"
     ],
     "websiteURL": "https://www.seeany.com",
-    "defaultPrompt": "Use $seeany-product-visuals to create an ecommerce product image."
+    "defaultPrompt": [
+      "Plan and quote a product image with $seeany-product-visuals, then wait for confirmation before generating it."
+    ]
   }
 }

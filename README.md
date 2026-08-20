@@ -1,6 +1,6 @@
 # SeeAny Product Visuals
 
-让 Codex、Claude Code、Cursor、WorkBuddy 等支持 MCP 的 AI Agent，直接调用 SeeAny 的电商商品视觉生成能力。
+让 WorkBuddy、Codex、Claude Code、Cursor 等支持 MCP 的 AI Agent，直接调用 SeeAny 的电商商品视觉生成能力。
 
 > 给 AI Agent 装上商品视觉创作能力。
 
@@ -16,6 +16,7 @@ SeeAny Product Visuals 是面向 AI Agent 的电商商品视觉生成 MCP。Agen
 - **费用预估**：在真实生成前，根据模型、分辨率和数量返回估算费用；询价不会预扣费用。
 - **异步任务管理**：创建任务后查询或等待状态，避免 Agent 因超时而重复提交付费任务。
 - **结果落盘**：把完成的图片下载到指定本地目录，并返回可继续用于代码或设计工作的文件路径。
+- **两阶段安全生成**：先返回完整方案与费用，再由用户确认执行；重复使用同一 `plan_id` 会恢复已有任务，避免超时后重复提交。
 
 ## 适合哪些场景
 
@@ -31,21 +32,20 @@ SeeAny Product Visuals 是面向 AI Agent 的电商商品视觉生成 MCP。Agen
 
 ```text
 Agent
-  └─ 查询能力与运行模式
-      └─ 上传参考图（可选）
-          └─ 润色提示词（可选）
-              └─ 询价
-                  └─ 创建生成任务
-                      └─ 等待/查询任务
-                          └─ 下载结果
+  └─ 规划商品视觉（不创建付费任务）
+      └─ 展示参数与预计费用
+          └─ 用户确认
+              └─ 执行、等待并下载结果
 ```
 
-推荐 Agent 先调用 `seeany_get_capabilities`，再按实际需求选择最短完整流程。没有参考图时可以直接从提示词开始；已经有明确提示词时也可以跳过润色。
+普通请求推荐调用 `seeany_plan_product_visual`，确认方案后再调用 `seeany_create_product_visual`。高级调用方仍然可以使用上传、润色、询价、生成、查询和下载等底层工具精细控制流程。
 
-## 9 个 MCP 工具
+## 11 个 MCP 工具
 
 | MCP 工具 | 作用 | 主要结果 | 是否可能产生费用 |
 | --- | --- | --- | --- |
+| `seeany_plan_product_visual` | 整理需求、验证本地参考图并生成执行计划 | `plan_id`、生产提示词、参数与预计费用 | 否，不创建生成任务 |
+| `seeany_create_product_visual` | 确认后执行计划、等待任务并下载结果 | `job_id`、状态与本地文件路径 | Live 模式会产生费用 |
 | `seeany_get_capabilities` | 查询模型、比例、分辨率和当前运行模式 | 模型与能力列表 | 否 |
 | `seeany_get_account` | 判断 MCP 当前处于 Demo 还是 Live 模式 | 鉴权与模式信息 | 否 |
 | `seeany_upload_asset` | 上传本地商品参考图 | `asset_id`、图片 URL | 通常否 |
@@ -123,9 +123,28 @@ codex mcp add seeany-product-visuals -- npx --yes seeany-product-visuals-mcp@lat
 
 只想体验调用流程时，删除 `env` 中的 Key 即可进入 Demo 模式。
 
+## 在 WorkBuddy 中使用
+
+WorkBuddy 可以通过用户级或项目级 MCP 配置直接启动这个 npm 包：
+
+```json
+{
+  "mcpServers": {
+    "seeany-product-visuals": {
+      "command": "npx",
+      "args": ["--yes", "seeany-product-visuals-mcp@latest"]
+    }
+  }
+}
+```
+
+保存后先让 WorkBuddy “使用 SeeAny 规划一张商品图并展示费用，不要直接生成”。完整配置路径、Live 模式和排错步骤见 [WorkBuddy 接入指南](./docs/workbuddy.md)。
+
+如果通过 SkillHub 分发商品视觉工作流，建议让 Skill 调用这个 MCP，而不是由 Agent 自行拼接 SeeAny API。详情见 [SkillHub 发布与旧 Skill 迁移说明](./docs/skillhub.md)。
+
 ## 安装为 Codex 插件（MCP + Skill）
 
-插件安装后会同时提供 SeeAny MCP 工具和 `seeany-product-visuals` 商品视觉工作流 Skill。Skill 会指导 Agent 遵循“上传参考图 → 润色 → 询价 → 生成 → 等待 → 下载”的安全流程。
+插件安装后会同时提供 SeeAny MCP 工具和 `seeany-product-visuals` 商品视觉工作流 Skill。Skill 会优先指导 Agent 使用“规划并询价 → 用户确认 → 执行并下载”的两阶段流程，同时保留底层工具供高级工作流使用。
 
 ```bash
 codex plugin marketplace add juin20260102-oss/seeany-product-visuals-mcp --sparse .agents/plugins
@@ -148,7 +167,7 @@ codex plugin add seeany-product-visuals-mcp@seeany
 先把我的简单描述润色成适合电商详情页的提示词，然后用快速模型做一张低成本测试图。
 ```
 
-在 Live 模式中，Agent 应在创建付费任务前展示估算费用；如果任务等待超时，应继续查询原 `job_id`，而不是直接创建重复任务。
+在 Live 模式中，Agent 应在创建付费任务前展示估算费用；如果任务等待超时，应使用原 `plan_id` 恢复原 `job_id`，而不是重新创建任务。
 
 ## 本地开发与测试
 
@@ -177,12 +196,14 @@ npm run inspect
 
 | MCP 工具 | SeeAny API |
 | --- | --- |
+| `seeany_plan_product_visual` | 本地规划与费用估算，不创建远程生成任务 |
+| `seeany_create_product_visual` | 编排上传、生成、状态查询和下载流程 |
 | `seeany_upload_asset` | `POST /api/upload/image` |
 | `seeany_refine_prompt` | `POST /api/prompt-tools/ai-refine` |
 | `seeany_generate_product_image` | `POST /api/ai/smarttask`，`aiTypeId=113`，`aiType=smartImg` |
 | `seeany_get_generation` / `seeany_wait_generation` | `GET /api/developer/task/status` |
 
-任务默认采用异步模式。MCP 内存中保存本次进程创建的 `asset_id` 和 `job_id` 映射；重启 MCP 后，旧的本地映射不会自动恢复。
+任务默认采用异步模式。MCP 内存中保存本次进程创建的 `plan_id`、`asset_id` 和 `job_id` 映射；同一进程中重复执行 `plan_id` 不会创建第二条任务。重启 MCP 后，旧的本地映射不会自动恢复。
 
 ## 自动测试与发布
 

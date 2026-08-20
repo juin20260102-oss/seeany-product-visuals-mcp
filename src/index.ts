@@ -50,6 +50,30 @@ interface UploadedAsset {
   remote_url?: string
 }
 
+type PlanStatus = 'planned' | 'running' | 'succeeded' | 'partial_failed' | 'failed'
+
+interface ProductVisualPlan {
+  id: string
+  mode: RunMode
+  status: PlanStatus
+  request: string
+  production_prompt: string
+  reference_file_paths: string[]
+  reference_asset_ids: string[]
+  model: string
+  use_case: 'white_background' | 'scene' | 'detail'
+  aspect_ratio: string
+  resolution: string
+  count: number
+  output_dir: string
+  created_at: string
+  estimated_credits?: number
+  estimated_price_cny?: number
+  job_id?: string
+  downloaded_files?: Array<{ asset_id: string; file_path: string }>
+  error?: string
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '../../')
 const packageMetadata = JSON.parse(
@@ -69,6 +93,10 @@ const demoFallbackPng = Buffer.from(
 
 const jobs = new Map<string, GenerationJob>()
 const assets = new Map<string, UploadedAsset>()
+const productVisualPlans = new Map<string, ProductVisualPlan>()
+
+const supportedRatios = ['auto', '1:1', '3:4', '4:5', '9:16', '2:3', '16:9', '4:3', '5:4', '3:2', '21:9'] as const
+const supportedUseCases = ['white_background', 'scene', 'detail'] as const
 
 const fixtureImages = [
   'shaver_product.png',
@@ -98,6 +126,42 @@ const modelCatalog = [
 ] as const
 
 const toolDefinitions = [
+  {
+    name: 'seeany_plan_product_visual',
+    description: 'Plan a complete product-visual job and estimate its cost without creating a paid generation task. Returns a plan_id for explicit execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string', minLength: 1, maxLength: 2000, description: 'The desired ecommerce product visual in natural language.' },
+        reference_file_paths: { type: 'array', items: { type: 'string' }, maxItems: 6, description: 'Optional local product reference images. They are validated now and uploaded only during execution.' },
+        model: { type: 'string', enum: ['seeany-quality', 'seeany-fast'], default: 'seeany-quality' },
+        use_case: { type: 'string', enum: ['white_background', 'scene', 'detail'], default: 'scene' },
+        aspect_ratio: { type: 'string', enum: supportedRatios, default: '1:1' },
+        resolution: { type: 'string', enum: ['1k', '2k', '4k'], default: '1k' },
+        count: { type: 'integer', minimum: 1, maximum: 4, default: 1 },
+        output_dir: { type: 'string', default: './seeany-output', description: 'Local directory used after successful generation.' },
+      },
+      required: ['request'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
+  {
+    name: 'seeany_create_product_visual',
+    description: 'Execute a previously quoted product-visual plan, wait for its stored job, and download outputs. In live mode confirm_cost must be true. Reusing a plan_id resumes its recorded job instead of submitting another one.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plan_id: { type: 'string' },
+        confirm_cost: { type: 'boolean', description: 'Explicit confirmation of the quoted live-mode cost.' },
+        timeout_seconds: { type: 'integer', minimum: 1, maximum: 120, default: 120 },
+        output_dir: { type: 'string', description: 'Optional override for the plan output directory.' },
+      },
+      required: ['plan_id', 'confirm_cost'],
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  },
   {
     name: 'seeany_get_capabilities',
     description: 'List SeeAny image generation models, ratios, resolutions, and current execution mode.',
@@ -436,10 +500,170 @@ async function refinePrompt(args: Record<string, any>) {
   return { mode: 'demo', prompt: `${prompt}${args.extra_context ? `; ${args.extra_context}` : ''}`, note: 'Demo mode does not call the paid prompt-refinement API.' }
 }
 
+function prepareProductVisualPrompt(request: string, useCase: ProductVisualPlan['use_case']) {
+  const guidance: Record<ProductVisualPlan['use_case'], string> = {
+    white_background: 'Create a clean ecommerce hero image on a pure white background with a centered product, controlled studio lighting, crisp edges, and a natural grounding shadow.',
+    scene: 'Place the product in a commercially usable lifestyle or studio scene with coherent perspective, realistic contact shadows, and lighting that supports the requested mood.',
+    detail: 'Create a close product detail image that clearly shows the requested material, construction, texture, or selling point with accurate surface rendering.',
+  }
+  return `${request.trim()}\n\nProduction constraints: ${guidance[useCase]} Preserve the product identity, proportions, materials, distinctive features, and visible branding from reference images. Do not invent extra products, labels, or unsupported claims.`
+}
+
+async function validateReferenceFiles(filePaths: string[]) {
+  const validated: Array<{ file_path: string; size_bytes: number }> = []
+  for (const filePath of filePaths) {
+    const resolved = path.resolve(process.cwd(), filePath)
+    const stat = await fs.stat(resolved)
+    if (!stat.isFile()) throw new Error(`Reference path is not a file: ${filePath}`)
+    if (stat.size > 40 * 1024 * 1024) throw new Error(`Reference file exceeds the 40 MB upload limit: ${filePath}`)
+    validated.push({ file_path: resolved, size_bytes: stat.size })
+  }
+  return validated
+}
+
+async function createProductVisualPlan(args: Record<string, any>) {
+  const request = String(args.request || '').trim()
+  if (!request) throw new Error('request is required')
+  if (request.length > 2000) throw new Error('request must be 2000 characters or fewer')
+
+  const model = String(args.model || 'seeany-quality')
+  const selectedModel = getModel(model)
+  if (!selectedModel) throw new Error(`Unsupported model: ${model}`)
+
+  const useCase = String(args.use_case || 'scene') as ProductVisualPlan['use_case']
+  if (!supportedUseCases.includes(useCase)) throw new Error(`Unsupported use_case: ${useCase}`)
+
+  const aspectRatio = String(args.aspect_ratio || '1:1')
+  if (!(supportedRatios as readonly string[]).includes(aspectRatio)) throw new Error(`Unsupported aspect_ratio: ${aspectRatio}`)
+
+  const resolution = String(args.resolution || '1k').toLowerCase()
+  if (!selectedModel.resolutions.includes(resolution as never)) throw new Error(`${model} does not support ${resolution} resolution`)
+
+  const count = Number(args.count || 1)
+  if (!Number.isInteger(count) || count < 1 || count > 4) throw new Error('count must be an integer from 1 to 4')
+
+  const referenceFilePaths = Array.isArray(args.reference_file_paths) ? args.reference_file_paths.map(String) : []
+  if (referenceFilePaths.length > 6) throw new Error('reference_file_paths supports at most 6 files')
+  const validatedReferences = await validateReferenceFiles(referenceFilePaths)
+
+  const id = `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const plan: ProductVisualPlan = {
+    id,
+    mode: runMode,
+    status: 'planned',
+    request,
+    production_prompt: prepareProductVisualPrompt(request, useCase),
+    reference_file_paths: validatedReferences.map((item) => item.file_path),
+    reference_asset_ids: [],
+    model,
+    use_case: useCase,
+    aspect_ratio: aspectRatio,
+    resolution,
+    count,
+    output_dir: String(args.output_dir || './seeany-output'),
+    created_at: now(),
+  }
+  if (runMode === 'live') plan.estimated_price_cny = estimatePrice(model, resolution, count)
+  else plan.estimated_credits = selectedModel.demo_price_per_image * count
+  productVisualPlans.set(id, plan)
+  return {
+    ...plan,
+    reference_files: validatedReferences,
+    creates_generation_task: false,
+    real_charge: false,
+    requires_cost_confirmation: runMode === 'live',
+    next_step: `Review this plan, then call seeany_create_product_visual with plan_id=${id} and confirm_cost=true to execute it.`,
+  }
+}
+
+async function waitForGenerationJob(jobId: string, timeoutSeconds: number) {
+  const timeoutMs = Math.min(Math.max(timeoutSeconds, 1), 120) * 1000
+  const started = Date.now()
+  while (Date.now() - started < timeoutMs) {
+    const job = jobs.get(jobId)
+    if (!job) throw new Error(`Unknown job_id: ${jobId}`)
+    const refreshed = await refreshLiveJob(job)
+    if (['succeeded', 'partial_failed', 'failed'].includes(refreshed.status)) return { job: refreshed, timed_out: false }
+    await new Promise((resolve) => setTimeout(resolve, refreshed.mode === 'live' ? 2000 : 100))
+  }
+  const job = jobs.get(jobId)
+  if (!job) throw new Error(`Unknown job_id: ${jobId}`)
+  return { job: await refreshLiveJob(job), timed_out: true }
+}
+
+async function executeProductVisualPlan(args: Record<string, any>) {
+  const planId = String(args.plan_id || '')
+  const plan = productVisualPlans.get(planId)
+  if (!plan) throw new Error(`Unknown or expired plan_id: ${planId}`)
+  if (plan.mode === 'live' && args.confirm_cost !== true) {
+    throw new Error(`Live generation requires confirm_cost=true for the quoted estimate of CNY ${plan.estimated_price_cny}`)
+  }
+  if (plan.downloaded_files?.length) {
+    return { ...plan, reused_existing_job: true, real_charge: plan.mode === 'live', note: 'This plan was already completed; no new generation task was created.' }
+  }
+
+  if (args.output_dir) plan.output_dir = String(args.output_dir)
+  const reusedExistingJob = Boolean(plan.job_id)
+  try {
+    plan.status = 'running'
+    plan.error = undefined
+
+    for (let index = plan.reference_asset_ids.length; index < plan.reference_file_paths.length; index += 1) {
+      const asset = await uploadAsset(plan.reference_file_paths[index])
+      plan.reference_asset_ids.push(asset.id)
+    }
+
+    if (!plan.job_id) {
+      const jobArgs = {
+        prompt: plan.production_prompt,
+        reference_asset_ids: plan.reference_asset_ids,
+        model: plan.model,
+        use_case: plan.use_case,
+        aspect_ratio: plan.aspect_ratio,
+        resolution: plan.resolution,
+        count: plan.count,
+      }
+      const job = plan.mode === 'live' ? await makeLiveJob(jobArgs) : makeDemoJob(jobArgs)
+      plan.job_id = job.id
+      productVisualPlans.set(plan.id, plan)
+    }
+
+    const result = await waitForGenerationJob(plan.job_id, Number(args.timeout_seconds || 120))
+    plan.status = result.job.status === 'queued' ? 'running' : result.job.status
+    if (result.timed_out) {
+      return {
+        ...plan,
+        timed_out: true,
+        reused_existing_job: reusedExistingJob,
+        real_charge: plan.mode === 'live',
+        next_step: `Call seeany_create_product_visual again with the same plan_id=${plan.id}; it will resume job ${plan.job_id} without creating a duplicate.`,
+      }
+    }
+    if (result.job.status === 'failed') {
+      plan.error = result.job.error || 'Generation failed'
+      return { ...plan, real_charge: plan.mode === 'live' }
+    }
+
+    const downloaded = await downloadJob(result.job, plan.output_dir)
+    plan.downloaded_files = downloaded.files
+    productVisualPlans.set(plan.id, plan)
+    return { ...plan, timed_out: false, reused_existing_job: reusedExistingJob, real_charge: plan.mode === 'live' }
+  } catch (error) {
+    plan.status = 'failed'
+    plan.error = error instanceof Error ? error.message : String(error)
+    productVisualPlans.set(plan.id, plan)
+    throw error
+  }
+}
+
 async function handleTool(name: string, args: Record<string, any>) {
   switch (name) {
+    case 'seeany_plan_product_visual':
+      return jsonResult(await createProductVisualPlan(args), 'SeeAny product visual plan (no generation task created)')
+    case 'seeany_create_product_visual':
+      return jsonResult(await executeProductVisualPlan(args), 'SeeAny product visual execution result')
     case 'seeany_get_capabilities':
-      return jsonResult({ mode: runMode, api_base_url: runMode === 'live' ? apiBaseUrl : null, models: modelCatalog, supported_ratios: ['auto', '1:1', '3:4', '4:5', '9:16', '2:3', '16:9', '4:3', '5:4', '3:2', '21:9'], core_api_features: ['image upload', 'smart product image', 'task status polling', 'prompt refinement'] }, 'SeeAny capabilities')
+      return jsonResult({ mode: runMode, api_base_url: runMode === 'live' ? apiBaseUrl : null, models: modelCatalog, supported_ratios: supportedRatios, recommended_tools: ['seeany_plan_product_visual', 'seeany_create_product_visual'], core_api_features: ['image upload', 'smart product image', 'task status polling', 'prompt refinement'] }, 'SeeAny capabilities')
     case 'seeany_get_account':
       return jsonResult(runMode === 'live' ? { mode: 'live', authenticated: true, api_base_url: apiBaseUrl, note: 'Balance and billing are managed in the SeeAny developer console.' } : { mode: 'demo', authenticated: false, demo_credits: 17255, note: 'No real API call or charge is made.' }, 'SeeAny account')
     case 'seeany_upload_asset': {
@@ -468,19 +692,8 @@ async function handleTool(name: string, args: Record<string, any>) {
     }
     case 'seeany_wait_generation': {
       const jobId = String(args.job_id || '')
-      const timeoutMs = Math.min(Math.max(Number(args.timeout_seconds || 30), 1), 120) * 1000
-      const started = Date.now()
-      while (Date.now() - started < timeoutMs) {
-        const job = jobs.get(jobId)
-        if (!job) throw new Error(`Unknown job_id: ${jobId}`)
-        const refreshed = await refreshLiveJob(job)
-        if (['succeeded', 'partial_failed', 'failed'].includes(refreshed.status)) return jsonResult(refreshed, `SeeAny job ${refreshed.id}: ${refreshed.status}`)
-        await new Promise((resolve) => setTimeout(resolve, refreshed.mode === 'live' ? 2000 : 100))
-      }
-      const job = jobs.get(jobId)
-      if (!job) throw new Error(`Unknown job_id: ${jobId}`)
-      const refreshed = await refreshLiveJob(job)
-      return jsonResult({ ...refreshed, timed_out: true }, `SeeAny job ${refreshed.id} is still ${refreshed.status}`)
+      const result = await waitForGenerationJob(jobId, Number(args.timeout_seconds || 30))
+      return jsonResult({ ...result.job, timed_out: result.timed_out }, result.timed_out ? `SeeAny job ${result.job.id} is still ${result.job.status}` : `SeeAny job ${result.job.id}: ${result.job.status}`)
     }
     case 'seeany_download_assets': {
       const job = jobs.get(String(args.job_id || ''))
@@ -495,7 +708,7 @@ async function handleTool(name: string, args: Record<string, any>) {
 
 const server = new Server(
   { name: 'seeany-product-visuals-mcp', version: serverVersion },
-  { capabilities: { tools: {} }, instructions: 'Use seeany_get_capabilities first. Upload local images before generation when references are needed. In live mode, generation and prompt refinement may incur account charges.' },
+  { capabilities: { tools: {} }, instructions: 'Prefer seeany_plan_product_visual followed by seeany_create_product_visual for ordinary requests. Planning does not create a paid generation task. In live mode, execute only after showing the quote and receiving explicit cost confirmation. Reuse the same plan_id after a timeout to avoid duplicate jobs. Advanced callers may use the lower-level tools directly.' },
 )
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolDefinitions }))
